@@ -124,7 +124,7 @@ export default function Calendar() {
           <div className="flex items-center justify-center text-sm font-semibold text-gray-900 =mt-12 space-x-4">
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#93C4D1] rounded-md mr-2"></div>
-              Product Line 1
+              Product Line 1 
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#D3C7E6] rounded-md mr-2"></div>
