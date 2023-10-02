@@ -128,11 +128,11 @@ export default function Calendar() {
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#D3C7E6] rounded-md mr-2"></div>
-              Product Line 2
+              Product Line 2 
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#FED5CF] rounded-md mr-2"></div>
-              Product Line 3
+              Product Line 3 
             </div>
           </div>
           <h1 className="text-lg font-semibold leading-6 text-gray-900">
