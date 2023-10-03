@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchData } from "../../redux/slice";
+import DetailView from "./DetailView";
 
 export default function Calendar() {
   const dispatch = useDispatch();
@@ -12,6 +13,13 @@ export default function Calendar() {
   const { data } = useSelector((state) => state.reducer);
 
   const [selectedProductLine, setSelectedProductLine] = useState("all");
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  const openModalWithEvent = (eventId) => {
+    setSelectedEvent(eventId);
+    setIsModalVisible(true);
+  };
 
   const rows = data.slice(1);
   const eventsMapping = {};
@@ -119,20 +127,27 @@ export default function Calendar() {
 
   return (
     <div className="p-8">
+      {isModalVisible && (
+        <DetailView
+          event={selectedEvent}
+          onClose={() => setIsModalVisible(false)}
+          data={data}
+        />
+      )}
       <div className="lg:flex mt-6 lg:h-full lg:flex-col">
         <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4 lg:flex-none">
           <div className="flex items-center justify-center text-sm font-semibold text-gray-900 =mt-12 space-x-4">
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#93C4D1] rounded-md mr-2"></div>
-              Product Line 1 
+              Product Line 1
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#D3C7E6] rounded-md mr-2"></div>
-              Product Line 2 
+              Product Line 2
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#FED5CF] rounded-md mr-2"></div>
-              Product Line 3 
+              Product Line 3
             </div>
           </div>
           <h1 className="text-lg font-semibold leading-6 text-gray-900">
@@ -229,7 +244,14 @@ export default function Calendar() {
                             )}
                           >
                             <li key={event.id}>
-                              <a href={event.href} className="group flex">
+                              <a
+                                href={event.href}
+                                onClick={(e) => {
+                                  e.preventDefault(); // Prevent default behavior since we're opening a modal
+                                  openModalWithEvent(event.id);
+                                }}
+                                className="group flex"
+                              >
                                 <p className="flex-auto truncate font-medium text-gray-900 group-hover:text-indigo-600">
                                   {event.name}
                                 </p>
@@ -243,11 +265,6 @@ export default function Calendar() {
                             </li>
                           </div>
                         ))}
-                      {/* {day.events.length > 2 && (
-                        <li className="text-gray-500">
-                          + {day.events.length - 2} more
-                        </li>
-                      )} */}
                     </ol>
                   )}
                 </div>
