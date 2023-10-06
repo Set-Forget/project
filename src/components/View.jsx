@@ -2,19 +2,49 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchData } from "../../redux/slice";
 import DetailView from "./DetailView";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { useDrag } from "react-dnd";
+import { useDrop } from "react-dnd";
 
-export default function Calendar() {
-  const dispatch = useDispatch();
+function DraggableEvent({ event, ...props }) {
+  const [, ref] = useDrag({
+    type: "EVENT",
+    item: { id: event.id },
+  });
 
-  useEffect(() => {
-    dispatch(fetchData());
-  }, [dispatch]);
+  return (
+    <div ref={ref} {...props}>
+      {props.children}
+    </div>
+  );
+}
 
+function DroppableDay({ day, onEventDrop, ...props }) {
+  const [{ isOver }, drop] = useDrop({
+    accept: "EVENT",
+    drop: (item) => onEventDrop(day, item.id),
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+    }),
+  });
+
+  return (
+    <div ref={drop} {...props}>
+      {props.children}
+    </div>
+  );
+}
+
+function Calendar() {
   const { data } = useSelector((state) => state.reducer);
+  const dispatch = useDispatch();
 
   const [selectedProductLine, setSelectedProductLine] = useState("all");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [currentMonthDays, setCurrentMonthDays] = useState([]);
+  const [shouldUpdateData, setShouldUpdateData] = useState(false);
 
   const openModalWithEvent = (eventId) => {
     setSelectedEvent(eventId);
@@ -25,14 +55,20 @@ export default function Calendar() {
   const eventsMapping = {};
 
   rows.forEach((row) => {
-    const eventDate = new Date(row[3]).toDateString();
+    const date = new Date(row[3]);
+    if (isNaN(date.getTime())) {
+      return;
+    }
+
+    const eventDate = date.toISOString().slice(0, 10);
+
     if (!eventsMapping[eventDate]) {
       eventsMapping[eventDate] = [];
     }
     eventsMapping[eventDate].push({
       id: row[0],
       name: row[9],
-      href: "#", // this needs to point somewhere
+      href: "#",
       datetime: row[3],
       time: `${new Date(row[5]).toLocaleTimeString()} - ${row[8]}`,
       productLine: row[2],
@@ -50,7 +86,7 @@ export default function Calendar() {
 
   function generateDaysForMonth(year, month) {
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0); // 0 as day means the last day of previous month
+    const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
 
     const days = [];
@@ -64,8 +100,7 @@ export default function Calendar() {
       });
     }
 
-    // Fill up previous month days if starting day isn't Sunday
-    while (firstDay.getDay() !== 1 && days.length % 7 !== 0) {
+    while (firstDay.getDay() !== 1) {
       firstDay.setDate(firstDay.getDate() - 1);
       days.unshift({
         date: `${firstDay.getFullYear()}-${String(
@@ -87,24 +122,29 @@ export default function Calendar() {
       });
     }
 
-    while (days.length > daysInMonth && days.length % 7 !== 0) {
-      days.pop();
-    }
-
     return days;
   }
 
-  const currentMonthDays = generateDaysForMonth(
-    new Date().getFullYear(),
-    new Date().getMonth()
-  );
+  useEffect(() => {
+    const initialMonthDays = generateDaysForMonth(
+      new Date().getFullYear(),
+      new Date().getMonth()
+    );
 
-  currentMonthDays.forEach((day) => {
-    const eventDate = new Date(day.date).toDateString();
-    if (eventsMapping[eventDate]) {
-      day.events = day.events.concat(eventsMapping[eventDate]);
+    const newMonthDays = [...initialMonthDays];
+
+    newMonthDays.forEach((day) => {
+      if (eventsMapping[day.date]) {
+        day.events = day.events.concat(eventsMapping[day.date]);
+      }
+    });
+
+    setCurrentMonthDays(newMonthDays);
+
+    if (shouldUpdateData) {
+      dispatch(fetchData());
     }
-  });
+  }, [eventsMapping]);
 
   function getProductLineColor(productLine) {
     switch (productLine) {
@@ -115,7 +155,7 @@ export default function Calendar() {
       case 3:
         return "bg-[#FED5CF]";
       default:
-        return "bg-gray-200"; // default color in case of other values
+        return "bg-gray-200";
     }
   }
 
@@ -125,12 +165,56 @@ export default function Calendar() {
 
   const actualMonth = new Date().toLocaleString("en-US", { month: "long" });
 
+  const handleEventDrop = (targetDay, eventId) => {
+    let movedEvent = null;
+
+    const updatedDays = currentMonthDays.map((day) => {
+      const filteredEvents = day.events.filter((event) => {
+        if (event.id === eventId) {
+          movedEvent = event;
+          return false;
+        }
+        return true;
+      });
+      return { ...day, events: filteredEvents };
+    });
+
+    const targetDayIndex = updatedDays.findIndex(
+      (day) => day.date === targetDay.date
+    );
+    if (targetDayIndex !== -1 && movedEvent) {
+      updatedDays[targetDayIndex].events.push(movedEvent);
+    }
+
+    setCurrentMonthDays(updatedDays);
+
+    const updatedEventDate = targetDay.date;
+    console.log('params: ', eventId, updatedEventDate);
+    updateEventInBackend(eventId, updatedEventDate);
+    setShouldUpdateData(true);
+  };
+
+  async function updateEventInBackend(eventId, updatedEventDate) {
+    console.log()
+    let url =
+      "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updateEventDate&eventId=" +
+      eventId +
+      "&date=" +
+      updatedEventDate;
+    await fetch(url, {
+      mode: "no-cors",
+    });
+    setShouldUpdateData(false);
+  }
+
   return (
     <div className="p-8">
       {isModalVisible && (
         <DetailView
           event={selectedEvent}
+          // setIsModalVisible={setIsModalVisible}
           onClose={() => setIsModalVisible(false)}
+          setIsModalVisible={setIsModalVisible}
           data={data}
         />
       )}
@@ -208,8 +292,10 @@ export default function Calendar() {
           <div className="flex bg-gray-200 text-xs leading-6 text-gray-700 lg:flex-auto">
             <div className="hidden w-full lg:grid lg:grid-cols-7 lg:gap-px">
               {currentMonthDays.map((day) => (
-                <div
+                <DroppableDay
                   key={day.date}
+                  day={day}
+                  onEventDrop={handleEventDrop}
                   className={classNames(
                     day.isCurrentMonth
                       ? "bg-white"
@@ -236,38 +322,40 @@ export default function Calendar() {
                             event.productLine === Number(selectedProductLine)
                         )
                         .map((event) => (
-                          <div
-                            key={event.id}
-                            className={classNames(
-                              "relative px-2 rounded-lg",
-                              getProductLineColor(event.productLine)
-                            )}
-                          >
-                            <li key={event.id}>
-                              <a
-                                href={event.href}
-                                onClick={(e) => {
-                                  e.preventDefault(); // Prevent default behavior since we're opening a modal
-                                  openModalWithEvent(event.id);
-                                }}
-                                className="group flex"
-                              >
-                                <p className="flex-auto truncate font-medium text-gray-900 group-hover:text-indigo-600">
-                                  {event.name}
-                                </p>
-                                <time
-                                  dateTime={event.datetime}
-                                  className="ml-3 hidden flex-none text-gray-500 group-hover:text-indigo-600 xl:block"
+                          <DraggableEvent key={event.id} event={event}>
+                            <div
+                              className={classNames(
+                                "relative px-2 rounded-lg",
+                                getProductLineColor(event.productLine)
+                              )}
+                              // onMouseEnter={() => openModalWithEvent(event.id)}
+                            >
+                              <li>
+                                <a
+                                  href={event.href}
+                                  onClick={(e) => {
+                                    e.preventDefault(); 
+                                    openModalWithEvent(event.id);
+                                  }}
+                                  className="group flex"
                                 >
-                                  {event.time}
-                                </time>
-                              </a>
-                            </li>
-                          </div>
+                                  <p className="flex-auto truncate font-medium text-gray-900 group-hover:text-indigo-600">
+                                    {event.name}
+                                  </p>
+                                  <time
+                                    dateTime={event.datetime}
+                                    className="ml-3 hidden flex-none text-gray-500 group-hover:text-indigo-600 xl:block"
+                                  >
+                                    {event.time}
+                                  </time>
+                                </a>
+                              </li>
+                            </div>
+                          </DraggableEvent>
                         ))}
                     </ol>
                   )}
-                </div>
+                </DroppableDay>
               ))}
             </div>
           </div>
@@ -276,3 +364,14 @@ export default function Calendar() {
     </div>
   );
 }
+
+function MainView() {
+  return (
+    <DndProvider backend={HTML5Backend}>
+      {/* Other components, including Calendar */}
+      <Calendar />
+    </DndProvider>
+  );
+}
+
+export default MainView;
