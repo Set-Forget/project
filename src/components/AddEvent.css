@@ -1,0 +1,20 @@
+/* Styles for date input */
+.date-input::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  display: block;
+  background-color: transparent;
+  width: 1em;
+  height: 1em;
+  cursor: pointer;
+  border-width: thin;
+}
+
+.date-input:not(:focus)::before {
+  content: "";
+  color: #ccc; /* Color of the placeholder text */
+  padding-left: 5px; /* Align text within input */
+}
+
+.date-input:not(:-webkit-calendar-picker-indicator):focus::before {
+  content: ""; /* Hide placeholder text when focused */
+}

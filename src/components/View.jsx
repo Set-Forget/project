@@ -6,6 +6,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useDrag } from "react-dnd";
 import { useDrop } from "react-dnd";
+import AddEvent from "./AddEvent";
 
 function DraggableEvent({ event, ...props }) {
   const [, ref] = useDrag({
@@ -45,6 +46,19 @@ function Calendar() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [currentMonthDays, setCurrentMonthDays] = useState([]);
   const [shouldUpdateData, setShouldUpdateData] = useState(false);
+  const [openAddEvent, setOpenAddEvent] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  function handleMonthChange(e) {
+    setSelectedMonth(Number(e.target.value));
+  }
+
+  function handleYearChange(e) {
+    setSelectedYear(Number(e.target.value));
+  }
 
   const openModalWithEvent = (eventId) => {
     setSelectedEvent(eventId);
@@ -126,10 +140,14 @@ function Calendar() {
   }
 
   useEffect(() => {
-    const initialMonthDays = generateDaysForMonth(
-      new Date().getFullYear(),
-      new Date().getMonth()
-    );
+    const allCategories = data
+      .map((el) => el[26])
+      .filter((value, index, array) => array.indexOf(value) === index && index != 0);
+    if (categories.length >= 0) {
+      setCategories(allCategories);
+    }
+
+    const initialMonthDays = generateDaysForMonth(selectedYear, selectedMonth);
 
     const newMonthDays = [...initialMonthDays];
 
@@ -144,7 +162,7 @@ function Calendar() {
     if (shouldUpdateData) {
       dispatch(fetchData());
     }
-  }, [eventsMapping]);
+  }, [eventsMapping, selectedMonth, selectedYear]);
 
   function getProductLineColor(productLine) {
     switch (productLine) {
@@ -163,7 +181,10 @@ function Calendar() {
     return classes.filter(Boolean).join(" ");
   }
 
-  const actualMonth = new Date().toLocaleString("en-US", { month: "long" });
+  const actualMonth = new Date(selectedYear, selectedMonth).toLocaleString(
+    "en-US",
+    { month: "long" }
+  );
 
   const handleEventDrop = (targetDay, eventId) => {
     let movedEvent = null;
@@ -189,13 +210,13 @@ function Calendar() {
     setCurrentMonthDays(updatedDays);
 
     const updatedEventDate = targetDay.date;
-    console.log('params: ', eventId, updatedEventDate);
+    console.log("params: ", eventId, updatedEventDate);
     updateEventInBackend(eventId, updatedEventDate);
     setShouldUpdateData(true);
   };
 
   async function updateEventInBackend(eventId, updatedEventDate) {
-    console.log()
+    console.log();
     let url =
       "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updateEventDate&eventId=" +
       eventId +
@@ -205,6 +226,10 @@ function Calendar() {
       mode: "no-cors",
     });
     setShouldUpdateData(false);
+  }
+
+  function openAddEventModal() {
+    setOpenAddEvent(true);
   }
 
   return (
@@ -235,15 +260,44 @@ function Calendar() {
             </div>
           </div>
           <h1 className="text-lg font-semibold leading-6 text-gray-900">
-            <time dateTime="2022-01">
-              {actualMonth} {new Date().getFullYear()}
-            </time>
+            <select
+              value={selectedMonth}
+              onChange={handleMonthChange}
+              className="border-0 appearance-none focus:outline-none focus:border-none focus:ring-0"
+            >
+              <option value={0}>January</option>
+              <option value={1}>February</option>
+              <option value={2}>March</option>
+              <option value={3}>April</option>
+              <option value={4}>May</option>
+              <option value={5}>June</option>
+              <option value={6}>July</option>
+              <option value={7}>August</option>
+              <option value={8}>September</option>
+              <option value={9}>October</option>
+              <option value={10}>November</option>
+              <option value={11}>December</option>
+            </select>
+            <select
+              value={selectedYear}
+              onChange={handleYearChange}
+              className="border-0 appearance-none focus:outline-none focus:border-none focus:ring-0"
+            >
+              {Array.from(
+                { length: new Date().getFullYear() - 1999 },
+                (_, i) => 2000 + i
+              ).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </h1>
 
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex md:items-center">
               <select
-                className="rounded-lg text-sm font-normal focus:outline-none focus:ring focus:ring-indigo-300"
+                className="rounded-lg text-sm mr-2 font-normal focus:outline-none focus:ring focus:ring-indigo-300"
                 value={selectedProductLine}
                 onChange={(e) => setSelectedProductLine(e.target.value)}
               >
@@ -255,8 +309,24 @@ function Calendar() {
                 <option value="2">Product Line 2</option>
                 <option value="3">Product Line 3</option>
               </select>
+              <select
+                className="rounded-lg text-sm font-normal focus:outline-none focus:ring focus:ring-indigo-300"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option selected disabled>
+                  Filter by Category
+                </option>
+                <option value="all">All</option>
+                {categories.map((category, index) => (
+                  <option key={index} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
               <div className="ml-6 h-6 w-px bg-gray-300" />
               <button
+                onClick={openAddEventModal}
                 type="button"
                 className="ml-6 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               >
@@ -265,6 +335,7 @@ function Calendar() {
             </div>
           </div>
         </header>
+        {openAddEvent && <AddEvent setOpenAddEvent={setOpenAddEvent} />}
         <div className="shadow ring-1 ring-black ring-opacity-5 lg:flex lg:flex-auto lg:flex-col">
           <div className="grid grid-cols-7 gap-px border-b border-gray-300 bg-gray-200 text-center text-xs font-semibold leading-6 text-gray-700 lg:flex-none">
             <div className="bg-white py-2">
@@ -316,10 +387,9 @@ function Calendar() {
                   {day.events.length > 0 && (
                     <ol className="mt-2">
                       {day.events
-                        .filter(
-                          (event) =>
-                            selectedProductLine === "all" ||
-                            event.productLine === Number(selectedProductLine)
+                          .filter((event) =>
+                          (selectedProductLine === "all" || event.productLine === Number(selectedProductLine)) &&
+                          (selectedCategory === "all" || data.find(e => e[0] === event.id)[26] === selectedCategory)
                         )
                         .map((event) => (
                           <DraggableEvent key={event.id} event={event}>
@@ -334,7 +404,7 @@ function Calendar() {
                                 <a
                                   href={event.href}
                                   onClick={(e) => {
-                                    e.preventDefault(); 
+                                    e.preventDefault();
                                     openModalWithEvent(event.id);
                                   }}
                                   className="group flex"
