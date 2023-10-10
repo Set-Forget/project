@@ -7,6 +7,9 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { useDrag } from "react-dnd";
 import { useDrop } from "react-dnd";
 import AddEvent from "./AddEvent";
+import { Listbox, Transition } from "@headlessui/react";
+import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import MultiSelect from "./Multiselect";
 
 function DraggableEvent({ event, ...props }) {
   const [, ref] = useDrag({
@@ -41,7 +44,10 @@ function Calendar() {
   const { data } = useSelector((state) => state.reducer);
   const dispatch = useDispatch();
 
-  const [selectedProductLine, setSelectedProductLine] = useState("all");
+  const [selectedProductLine, setSelectedProductLine] = useState(["all"]);
+  const [selectedCategory, setSelectedCategory] = useState(["all"]);
+  // const [selectedProductLine, setSelectedProductLine] = useState([]);
+  // const [selectedCategory, setSelectedCategory] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [currentMonthDays, setCurrentMonthDays] = useState([]);
@@ -50,7 +56,6 @@ function Calendar() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
 
   function handleMonthChange(e) {
     setSelectedMonth(Number(e.target.value));
@@ -114,7 +119,8 @@ function Calendar() {
       });
     }
 
-    while (firstDay.getDay() !== 1) {
+    // Adjust this to ensure calendar starts on Sunday
+    while (firstDay.getDay() !== 0) {
       firstDay.setDate(firstDay.getDate() - 1);
       days.unshift({
         date: `${firstDay.getFullYear()}-${String(
@@ -125,6 +131,7 @@ function Calendar() {
       });
     }
 
+    // This remains unchanged. It pads days until the end of the week (Saturday).
     while (days.length % 7 !== 0) {
       lastDay.setDate(lastDay.getDate() + 1);
       days.push({
@@ -140,10 +147,13 @@ function Calendar() {
   }
 
   useEffect(() => {
-    const allCategories = data
+    let allCategories = data
       .map((el) => el[26])
-      .filter((value, index, array) => array.indexOf(value) === index && index != 0);
+      .filter(
+        (value, index, array) => array.indexOf(value) === index && index != 0
+      );
     if (categories.length >= 0) {
+      allCategories.unshift("all");
       setCategories(allCategories);
     }
 
@@ -162,7 +172,13 @@ function Calendar() {
     if (shouldUpdateData) {
       dispatch(fetchData());
     }
-  }, [eventsMapping, selectedMonth, selectedYear]);
+  }, [
+    eventsMapping,
+    selectedMonth,
+    selectedYear,
+    selectedProductLine,
+    selectedCategory,
+  ]);
 
   function getProductLineColor(productLine) {
     switch (productLine) {
@@ -296,34 +312,24 @@ function Calendar() {
 
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex md:items-center">
-              <select
-                className="rounded-lg text-sm mr-2 font-normal focus:outline-none focus:ring focus:ring-indigo-300"
-                value={selectedProductLine}
-                onChange={(e) => setSelectedProductLine(e.target.value)}
-              >
-                <option selected disabled>
-                  Filter by Product Line
-                </option>
-                <option value="all">All</option>
-                <option value="1">Product Line 1</option>
-                <option value="2">Product Line 2</option>
-                <option value="3">Product Line 3</option>
-              </select>
-              <select
-                className="rounded-lg text-sm font-normal focus:outline-none focus:ring focus:ring-indigo-300"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                <option selected disabled>
-                  Filter by Category
-                </option>
-                <option value="all">All</option>
-                {categories.map((category, index) => (
-                  <option key={index} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+              <MultiSelect
+                label="Product Line"
+                options={[
+                  "all",
+                  "Product Line 1",
+                  "Product Line 2",
+                  "Product Line 3",
+                ]}
+                selectedValues={selectedProductLine}
+                onChange={setSelectedProductLine}
+              />
+
+              <MultiSelect
+                label="Category"
+                options={categories}
+                selectedValues={selectedCategory}
+                onChange={setSelectedCategory}
+              />
               <div className="ml-6 h-6 w-px bg-gray-300" />
               <button
                 onClick={openAddEventModal}
@@ -338,6 +344,9 @@ function Calendar() {
         {openAddEvent && <AddEvent setOpenAddEvent={setOpenAddEvent} />}
         <div className="shadow ring-1 ring-black ring-opacity-5 lg:flex lg:flex-auto lg:flex-col">
           <div className="grid grid-cols-7 gap-px border-b border-gray-300 bg-gray-200 text-center text-xs font-semibold leading-6 text-gray-700 lg:flex-none">
+            <div className="bg-white py-2">
+              S<span className="sr-only sm:not-sr-only">un</span>
+            </div>
             <div className="bg-white py-2">
               M<span className="sr-only sm:not-sr-only">on</span>
             </div>
@@ -355,9 +364,6 @@ function Calendar() {
             </div>
             <div className="bg-white py-2">
               S<span className="sr-only sm:not-sr-only">at</span>
-            </div>
-            <div className="bg-white py-2">
-              S<span className="sr-only sm:not-sr-only">un</span>
             </div>
           </div>
           <div className="flex bg-gray-200 text-xs leading-6 text-gray-700 lg:flex-auto">
@@ -387,18 +393,21 @@ function Calendar() {
                   {day.events.length > 0 && (
                     <ol className="mt-2">
                       {day.events
-                          .filter((event) =>
-                          (selectedProductLine === "all" || event.productLine === Number(selectedProductLine)) &&
-                          (selectedCategory === "all" || data.find(e => e[0] === event.id)[26] === selectedCategory)
-                        )
+                        .filter((event) => {
+                          const eventCategory = data.find((e) => e[0] === event.id)[26];
+                          const eventProductLineString = `Product Line ${event.productLine}`;
+                          const matchesProductLine = selectedProductLine.includes("all") || selectedProductLine.includes(eventProductLineString);
+                          const matchesCategory = selectedCategory.includes("all") || selectedCategory.includes(eventCategory);
+                                                    
+                          return matchesProductLine && matchesCategory;
+                      })
                         .map((event) => (
                           <DraggableEvent key={event.id} event={event}>
                             <div
                               className={classNames(
-                                "relative px-2 rounded-lg",
+                                "relative px-2 mb-1 py-1 rounded-lg",
                                 getProductLineColor(event.productLine)
                               )}
-                              // onMouseEnter={() => openModalWithEvent(event.id)}
                             >
                               <li>
                                 <a
@@ -407,17 +416,19 @@ function Calendar() {
                                     e.preventDefault();
                                     openModalWithEvent(event.id);
                                   }}
-                                  className="group flex"
+                                  className="group flex flex-col"
                                 >
-                                  <p className="flex-auto truncate font-medium text-gray-900 group-hover:text-indigo-600">
+                                  <p className="flex-auto truncate font-medium text-gray-900  mb-1 hover:whitespace-normal hover:overflow-visible">
                                     {event.name}
                                   </p>
-                                  <time
-                                    dateTime={event.datetime}
-                                    className="ml-3 hidden flex-none text-gray-500 group-hover:text-indigo-600 xl:block"
-                                  >
-                                    {event.time}
-                                  </time>
+                                  <div className="flex justify-between items-center">
+                                    <time
+                                      dateTime={event.datetime}
+                                      className="-mt-2 text-xs text-gray-500 group-hover:text-indigo-600"
+                                    >
+                                      {event.time}
+                                    </time>
+                                  </div>
                                 </a>
                               </li>
                             </div>
