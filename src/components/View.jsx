@@ -7,9 +7,8 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { useDrag } from "react-dnd";
 import { useDrop } from "react-dnd";
 import AddEvent from "./AddEvent";
-import { Listbox, Transition } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import MultiSelect from "./Multiselect";
+// import classNames from "classnames";
 
 function DraggableEvent({ event, ...props }) {
   const [, ref] = useDrag({
@@ -24,8 +23,8 @@ function DraggableEvent({ event, ...props }) {
   );
 }
 
-function DroppableDay({ day, onEventDrop, ...props }) {
-  const [{ isOver }, drop] = useDrop({
+function DroppableDay({ day, onEventDrop, className, children, ...props }) {
+  const [{ isOver }, dropRef] = useDrop({
     accept: "EVENT",
     drop: (item) => onEventDrop(day, item.id),
     collect: (monitor) => ({
@@ -34,10 +33,18 @@ function DroppableDay({ day, onEventDrop, ...props }) {
   });
 
   return (
-    <div ref={drop} {...props}>
-      {props.children}
+    <div
+      ref={dropRef}
+      className={`${className} ${isOver ? "border-2 border-indigo-200" : ""}`}
+      {...props}
+    >
+      {children}
     </div>
   );
+}
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(" ");
 }
 
 function Calendar() {
@@ -193,9 +200,9 @@ function Calendar() {
     }
   }
 
-  function classNames(...classes) {
-    return classes.filter(Boolean).join(" ");
-  }
+  // function classNames(...classes) {
+  //   return classes.filter(Boolean).join(" ");
+  // }
 
   const actualMonth = new Date(selectedYear, selectedMonth).toLocaleString(
     "en-US",
@@ -205,6 +212,7 @@ function Calendar() {
   const handleEventDrop = (targetDay, eventId) => {
     let movedEvent = null;
 
+    // Immediately update the local state (UI)
     const updatedDays = currentMonthDays.map((day) => {
       const filteredEvents = day.events.filter((event) => {
         if (event.id === eventId) {
@@ -223,26 +231,76 @@ function Calendar() {
       updatedDays[targetDayIndex].events.push(movedEvent);
     }
 
-    setCurrentMonthDays(updatedDays);
+    setCurrentMonthDays(updatedDays); // This immediately updates the UI
 
+    // Update the backend
     const updatedEventDate = targetDay.date;
-    console.log("params: ", eventId, updatedEventDate);
-    updateEventInBackend(eventId, updatedEventDate);
+    updateEventInBackend(eventId, updatedEventDate)
+      .then(() => {
+        // Handle success if necessary (e.g., show a success toast)
+      })
+      .catch((error) => {
+        // Handle error (e.g., revert the change in the UI, show an error toast)
+        console.error("Failed to update the backend", error);
+        // Revert the UI change here if desired
+      });
     setShouldUpdateData(true);
   };
 
   async function updateEventInBackend(eventId, updatedEventDate) {
-    console.log();
     let url =
       "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updateEventDate&eventId=" +
       eventId +
       "&date=" +
       updatedEventDate;
-    await fetch(url, {
-      mode: "no-cors",
-    });
+    const response = await fetch(url, { mode: "no-cors" });
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
     setShouldUpdateData(false);
   }
+
+  // const handleEventDrop = (targetDay, eventId) => {
+  //   let movedEvent = null;
+
+  //   const updatedDays = currentMonthDays.map((day) => {
+  //     const filteredEvents = day.events.filter((event) => {
+  //       if (event.id === eventId) {
+  //         movedEvent = event;
+  //         return false;
+  //       }
+  //       return true;
+  //     });
+  //     return { ...day, events: filteredEvents };
+  //   });
+
+  //   const targetDayIndex = updatedDays.findIndex(
+  //     (day) => day.date === targetDay.date
+  //   );
+  //   if (targetDayIndex !== -1 && movedEvent) {
+  //     updatedDays[targetDayIndex].events.push(movedEvent);
+  //   }
+
+  //   setCurrentMonthDays(updatedDays);
+
+  //   const updatedEventDate = targetDay.date;
+  //   console.log("params: ", eventId, updatedEventDate);
+  //   updateEventInBackend(eventId, updatedEventDate);
+  //   setShouldUpdateData(true);
+  // };
+
+  // async function updateEventInBackend(eventId, updatedEventDate) {
+  //   console.log();
+  // let url =
+  //   "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updateEventDate&eventId=" +
+  //   eventId +
+  //   "&date=" +
+  //   updatedEventDate;
+  //   await fetch(url, {
+  //     mode: "no-cors",
+  //   });
+  //   setShouldUpdateData(false);
+  // }
 
   function openAddEventModal() {
     setOpenAddEvent(true);
@@ -384,7 +442,7 @@ function Calendar() {
                     dateTime={day.date}
                     className={
                       day.isToday
-                        ? "flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 font-semibold text-white"
+                        ? "flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 font-semibold text-white border-2 border-indigo-600"
                         : undefined
                     }
                   >
@@ -394,13 +452,21 @@ function Calendar() {
                     <ol className="mt-2">
                       {day.events
                         .filter((event) => {
-                          const eventCategory = data.find((e) => e[0] === event.id)[26];
+                          const eventCategory = data.find(
+                            (e) => e[0] === event.id
+                          )[26];
                           const eventProductLineString = `Product Line ${event.productLine}`;
-                          const matchesProductLine = selectedProductLine.includes("all") || selectedProductLine.includes(eventProductLineString);
-                          const matchesCategory = selectedCategory.includes("all") || selectedCategory.includes(eventCategory);
-                                                    
+                          const matchesProductLine =
+                            selectedProductLine.includes("all") ||
+                            selectedProductLine.includes(
+                              eventProductLineString
+                            );
+                          const matchesCategory =
+                            selectedCategory.includes("all") ||
+                            selectedCategory.includes(eventCategory);
+
                           return matchesProductLine && matchesCategory;
-                      })
+                        })
                         .map((event) => (
                           <DraggableEvent key={event.id} event={event}>
                             <div
