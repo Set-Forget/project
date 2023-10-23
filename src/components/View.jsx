@@ -96,7 +96,7 @@ function Calendar() {
       name: row[9],
       href: "#",
       datetime: row[3],
-      time: `${new Date(row[5]).toLocaleTimeString()} - ${row[8]}`,
+      time: `${new Date(row[5]).toLocaleTimeString()} - ${row[7]}`,
       productLine: row[2],
     });
   });
@@ -259,48 +259,6 @@ function Calendar() {
     }
     setShouldUpdateData(false);
   }
-
-  // const handleEventDrop = (targetDay, eventId) => {
-  //   let movedEvent = null;
-
-  //   const updatedDays = currentMonthDays.map((day) => {
-  //     const filteredEvents = day.events.filter((event) => {
-  //       if (event.id === eventId) {
-  //         movedEvent = event;
-  //         return false;
-  //       }
-  //       return true;
-  //     });
-  //     return { ...day, events: filteredEvents };
-  //   });
-
-  //   const targetDayIndex = updatedDays.findIndex(
-  //     (day) => day.date === targetDay.date
-  //   );
-  //   if (targetDayIndex !== -1 && movedEvent) {
-  //     updatedDays[targetDayIndex].events.push(movedEvent);
-  //   }
-
-  //   setCurrentMonthDays(updatedDays);
-
-  //   const updatedEventDate = targetDay.date;
-  //   console.log("params: ", eventId, updatedEventDate);
-  //   updateEventInBackend(eventId, updatedEventDate);
-  //   setShouldUpdateData(true);
-  // };
-
-  // async function updateEventInBackend(eventId, updatedEventDate) {
-  //   console.log();
-  // let url =
-  //   "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updateEventDate&eventId=" +
-  //   eventId +
-  //   "&date=" +
-  //   updatedEventDate;
-  //   await fetch(url, {
-  //     mode: "no-cors",
-  //   });
-  //   setShouldUpdateData(false);
-  // }
 
   function openAddEventModal() {
     setOpenAddEvent(true);

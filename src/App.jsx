@@ -3,13 +3,14 @@ import { Route, Routes, HashRouter } from "react-router-dom";
 import MainView from "./components/View";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
-import { fetchData } from "../redux/slice";
+import { fetchAllLocations, fetchData } from "../redux/slice";
 
 function App() {
   const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(fetchData());
+    dispatch(fetchAllLocations());
   }, [dispatch]);
   return (
     <HashRouter>
