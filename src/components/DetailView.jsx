@@ -3,8 +3,15 @@ import { useEffect, useState } from "react";
 import Spinner from "./Spinner";
 import { useDispatch } from "react-redux";
 import { fetchData } from "../../redux/slice";
+import ConfirmDeleteEvent from "./ConfirmDeleteEvent";
 
-function DetailView({ event, setIsModalVisible, onClose, data }) {
+function DetailView({
+  event,
+  setIsModalVisible,
+  onClose,
+  data,
+  setShouldUpdateData,
+}) {
   let headers = data[0];
   let filteredEventData = data.filter((el) => el[0] == event)[0];
 
@@ -35,6 +42,9 @@ function DetailView({ event, setIsModalVisible, onClose, data }) {
   const [eventId, setEventId] = useState("");
   const [isLoadingPost, setIsLoadingPost] = useState(false);
   const [putTime, setPutTime] = useState(false);
+  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
+  const [deleteEventId, setDeleteEventId] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -44,14 +54,44 @@ function DetailView({ event, setIsModalVisible, onClose, data }) {
     // if (putTime) {
     //   dispatch(fetchData());
     // }
-  }, []);
+    if (deleteEventId == true) {
+      const deletePost = async () => {
+        setIsLoadingDelete(true);
+        await deleteEvent(eventId);
+        dispatch(fetchData());
+        setDeleteEventId(false);
+        setIsLoadingDelete(false);
+        setEditPlanStart(false);
+        setShouldUpdateData(true);
+        setIsModalVisible(false);
+      };
+      deletePost();
+    }
+  }, [deleteEventId, isLoadingDelete, dispatch, editPlanStart]);
+
+  const handleDeleteEvent = () => {
+    setConfirmModalVisible(true);
+    // setIsLoadingDelete(true);
+    // setDeleteEventId(true);
+  };
 
   const handleSave = () => {
-    console.log(editedPlanStart);
     setIsLoadingPost(true);
     // setPutTime(true);
     putPlanTime(eventId, editedPlanStart);
     setPutTime(false);
+  };
+
+  const deleteEvent = async (eventId) => {
+    try {
+      let url = `https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=deleteEvent&eventId=${eventId}`;
+
+      await fetch(url, {
+        mode: "no-cors",
+      });
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
   };
 
   async function putPlanTime(eventId, updatedPlanTime) {
@@ -89,84 +129,110 @@ function DetailView({ event, setIsModalVisible, onClose, data }) {
             // onMouseLeave={() => setIsModalVisible(false)}
             className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all w-[600px] sm:my-8 sm:p-6"
           >
-            <div className="px-4 py-6 sm:px-6">
-              <div className="flex -mt-4 justify-end">
-                {editPlanStart == false ? (
-                  <button
-                    type="button"
-                    onClick={() => setEditPlanStart(true)}
-                    className="w-32 rounded-md mr-2 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:border hover:border-indigo-500"
-                  >
-                    Edit Plan Start
-                  </button>
-                ) : isLoadingPost ? (
-                  // Spinner
-                  <div className="w-32 rounded-md ml-2 -mt-4 flex justify-center items-center">
-                    <Spinner />
+            {confirmModalVisible && (
+              <ConfirmDeleteEvent
+                setIsLoadingDelete={setIsLoadingDelete}
+                setDeleteEventId={setDeleteEventId}
+                setConfirmModalVisible={setConfirmModalVisible}
+              />
+            )}
+            {isLoadingDelete == false ? (
+              <>
+                <div className="px-4 py-6 sm:px-6">
+                  <div className="flex -mt-4 justify-end">
+                    {editPlanStart == false ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditPlanStart(true)}
+                        className="w-32 rounded-md mr-2 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:border hover:border-indigo-500"
+                      >
+                        Edit Plan Start
+                      </button>
+                    ) : isLoadingPost ? (
+                      // Spinner
+                      <div className="w-32 rounded-md ml-2 -mt-4 flex justify-center items-center">
+                        <Spinner />
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleSave}
+                          className="w-24 rounded-md mr-2 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:border hover:border-indigo-500"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDeleteEvent}
+                          className="w-28 rounded-md mr-2 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:border hover:border-indigo-500"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {isLoadingPost ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-24 rounded-md bg-indigo-600 px-3 py-2 text-sm font-normal text-white shadow-sm"
+                      >
+                        Close
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-24 rounded-md bg-indigo-600 px-3 py-2 text-sm font-normal text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                      >
+                        Close
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="w-32 rounded-md mr-2 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:border hover:border-indigo-500"
-                  >
-                    Save
-                  </button>
-                )}
-                {isLoadingPost ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-24 rounded-md bg-indigo-600 px-3 py-2 text-sm font-normal text-white shadow-sm"
-                  >
-                    Close
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="w-24 rounded-md bg-indigo-600 px-3 py-2 text-sm font-normal text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                  >
-                    Close
-                  </button>
-                )}
+                  <h3 className="text-base font-semibold leading-7 text-gray-900">
+                    Event Detail
+                  </h3>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+                    You can change date and time here
+                  </p>
+                </div>
+                <div className="border-t border-gray-100">
+                  <dl className="divide-y divide-gray-100">
+                    {headers.map((el, e) => {
+                      return (
+                        <div
+                          key={e}
+                          className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"
+                        >
+                          <dt className="text-sm font-medium text-gray-900">
+                            {el}
+                          </dt>
+                          <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+                            {e === 5 && editPlanStart ? (
+                              <input
+                                type="time"
+                                value={editedPlanStart}
+                                onChange={(e) =>
+                                  setEditedPlanStart(e.target.value)
+                                }
+                                className="border rounded p-2 w-full"
+                                step="1"
+                              />
+                            ) : (
+                              formattedEventData[e]
+                            )}
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                </div>
+              </>
+            ) : (
+              <div className="justify-center items-center py-12 px-12">
+                <Spinner />
               </div>
-              <h3 className="text-base font-semibold leading-7 text-gray-900">
-                Event Detail
-              </h3>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
-                You can change date and time here
-              </p>
-            </div>
-            <div className="border-t border-gray-100">
-              <dl className="divide-y divide-gray-100">
-                {headers.map((el, e) => {
-                  return (
-                    <div
-                      key={e}
-                      className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"
-                    >
-                      <dt className="text-sm font-medium text-gray-900">
-                        {el}
-                      </dt>
-                      <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-                        {e === 5 && editPlanStart ? (
-                          <input
-                            type="time"
-                            value={editedPlanStart}
-                            onChange={(e) => setEditedPlanStart(e.target.value)}
-                            className="border rounded p-2 w-full"
-                            step="1"
-                          />
-                        ) : (
-                          formattedEventData[e]
-                        )}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </div>
+            )}
           </div>
         </div>
       </div>

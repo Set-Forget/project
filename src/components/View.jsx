@@ -8,6 +8,7 @@ import { useDrag } from "react-dnd";
 import { useDrop } from "react-dnd";
 import AddEvent from "./AddEvent";
 import MultiSelect from "./Multiselect";
+import LoadingSpinner from "./LoadingSpinner";
 // import classNames from "classnames";
 
 function DraggableEvent({ event, ...props }) {
@@ -63,6 +64,8 @@ function Calendar() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [categories, setCategories] = useState([]);
+  const [isLoadingSpinnerVisible, setIsLoadingSpinnerVisible] = useState(false);
+  const [eventSpinnerId, setEventSpinnerId] = useState(null);
 
   function handleMonthChange(e) {
     setSelectedMonth(Number(e.target.value));
@@ -185,6 +188,7 @@ function Calendar() {
     selectedYear,
     selectedProductLine,
     selectedCategory,
+    data
   ]);
 
   function getProductLineColor(productLine) {
@@ -210,6 +214,8 @@ function Calendar() {
   );
 
   const handleEventDrop = (targetDay, eventId) => {
+    setEventSpinnerId(eventId)
+    setIsLoadingSpinnerVisible(true)
     let movedEvent = null;
 
     // Immediately update the local state (UI)
@@ -249,11 +255,12 @@ function Calendar() {
 
   async function updateEventInBackend(eventId, updatedEventDate) {
     let url =
-      "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updateEventDate&eventId=" +
-      eventId +
-      "&date=" +
-      updatedEventDate;
+    "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updateEventDate&eventId=" +
+    eventId +
+    "&date=" +
+    updatedEventDate;
     const response = await fetch(url, { mode: "no-cors" });
+    setIsLoadingSpinnerVisible(false);
     if (!response.ok) {
       throw new Error("Network response was not ok");
     }
@@ -270,6 +277,7 @@ function Calendar() {
         <DetailView
           event={selectedEvent}
           // setIsModalVisible={setIsModalVisible}
+          setShouldUpdateData={setShouldUpdateData}
           onClose={() => setIsModalVisible(false)}
           setIsModalVisible={setIsModalVisible}
           data={data}
@@ -410,9 +418,10 @@ function Calendar() {
                     <ol className="mt-2">
                       {day.events
                         .filter((event) => {
-                          const eventCategory = data.find(
+                          let eventCategory = data?.find(
                             (e) => e[0] === event.id
-                          )[26];
+                          )
+                          eventCategory = eventCategory ? eventCategory[26] : null;
                           const eventProductLineString = `Product Line ${event.productLine}`;
                           const matchesProductLine =
                             selectedProductLine.includes("all") ||
@@ -442,7 +451,7 @@ function Calendar() {
                                   }}
                                   className="group flex flex-col"
                                 >
-                                  <p className="flex-auto truncate font-medium text-gray-900  mb-1 hover:whitespace-normal hover:overflow-visible">
+                                  <p className="flex-auto truncate w-[150px] font-medium text-gray-900  mb-1 hover:whitespace-normal hover:overflow-visible">
                                     {event.name}
                                   </p>
                                   <div className="flex justify-between items-center">
@@ -454,6 +463,11 @@ function Calendar() {
                                     </time>
                                   </div>
                                 </a>
+                                {isLoadingSpinnerVisible && event.id == eventSpinnerId? (
+                                  <LoadingSpinner />
+                                ) : (
+                                  <></>
+                                )}
                               </li>
                             </div>
                           </DraggableEvent>
@@ -473,7 +487,6 @@ function Calendar() {
 function MainView() {
   return (
     <DndProvider backend={HTML5Backend}>
-      {/* Other components, including Calendar */}
       <Calendar />
     </DndProvider>
   );
