@@ -64,15 +64,23 @@ const AddEvent = ({ setOpenAddEvent }) => {
 
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    dispatch(fetchAllLocations());
-  }, []);
-
   const { allLocations } = useSelector((state) => state.reducer);
 
   const [errorMessages, setErrorMessages] = useState({});
   const [isLoadingAdd, setIsLoadingAdd] = useState(false);
   const [selectedFGItem, setSelectedFGItem] = useState(null);
+  const [loadData, setLoadData] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchAllLocations());
+
+    if (loadData == true) {
+      dispatch(fetchData());
+      setIsLoadingAdd(false);
+      setOpenAddEvent(false);
+      setLoadData(false);
+    }
+  }, [loadData]);
 
   const refs = inputFields.reduce((acc, field) => {
     acc[field.name] = useRef(null);
@@ -96,8 +104,6 @@ const AddEvent = ({ setOpenAddEvent }) => {
   }
 
   function handleSubmit() {
-    setIsLoadingAdd(true);
-
     const formattedValues = {};
     inputFields.forEach((field) => {
       formattedValues[field.name] = "";
@@ -129,7 +135,7 @@ const AddEvent = ({ setOpenAddEvent }) => {
           if (field.name === "fgItem") {
             formattedValues[field.name] = selectedFGItem
               ? selectedFGItem.value
-              : ""; // Use the value from react-select state
+              : "";
           }
           if (
             [
@@ -150,19 +156,58 @@ const AddEvent = ({ setOpenAddEvent }) => {
       return;
     }
 
+    setIsLoadingAdd(true);
+
     const matchingLocation = allLocations.find(
       (location) => location[2] === formattedValues.fgItem
     )[0];
+
+    const matchingCategory = allLocations.find(
+      (category) => category[2] === formattedValues.fgItem
+    )[3];
 
     formattedValues.id = generateRandomID();
     formattedValues.status = "Scheduled";
     formattedValues.fgName = formattedValues.fgItem;
     formattedValues.fgItem = matchingLocation;
+    formattedValues.planStart = formatDateTime(formattedValues.planStart);
+    formattedValues.planEnd = formatDateTime(formattedValues.planEnd);
+    formattedValues.category = matchingCategory;
 
     sendDataToSheet(Object.values(formattedValues));
-    dispatch(fetchData());
-    setOpenAddEvent(false);
-    setIsLoadingAdd(false);
+    setLoadData(true);
+  }
+
+  // function formatDateTime(datetimeStr) {
+  //   // Create a Date object from the input string
+  //   const date = new Date(datetimeStr);
+
+  //   // Format the date and time parts separately
+  //   const formattedDate =
+  //     `${date.getMonth() + 1}`.padStart(2, "0") +
+  //     `/${date.getDate()}`.padStart(2, "0") +
+  //     `/${date.getFullYear()}`;
+  //   const formattedTime =
+  //     `${date.getHours()}`.padStart(2, "0") +
+  //     `:${date.getMinutes()}`.padStart(2, "0") +
+  //     `:${date.getSeconds()}`.padStart(2, "0");
+
+  //   // Combine and return the formatted date and time
+  //   return formattedDate + " " + formattedTime;
+  // }
+  function formatDateTime(datetimeStr) {
+    const date = new Date(datetimeStr + "Z"); // Append 'Z' to indicate UTC
+
+    const formattedDate =
+      `${date.getUTCMonth() + 1}`.padStart(2, "0") +
+      `/${date.getUTCDate()}`.padStart(2, "0") +
+      `/${date.getUTCFullYear()}`;
+    const formattedTime =
+      `${date.getUTCHours()}`.padStart(2, "0") +
+      `:${date.getUTCMinutes()}`.padStart(2, "0") +
+      `:${date.getUTCSeconds()}`.padStart(2, "0");
+
+    return formattedDate + " " + formattedTime;
   }
 
   async function sendDataToSheet(data) {
@@ -191,6 +236,11 @@ const AddEvent = ({ setOpenAddEvent }) => {
     "planEnd",
     "planQuantityCases",
   ];
+
+  const now = new Date();
+
+  // const datetime = now.toISOString().slice(0, 16);
+  const [datetime, setDatetime] = useState(now.toISOString().slice(0, 16));
 
   return (
     <div
@@ -226,10 +276,12 @@ const AddEvent = ({ setOpenAddEvent }) => {
                     </label>
                     {field.name === "fgItem" ? (
                       <Select
-                        options={allLocations?.map((option) => ({
-                          value: option[2],
-                          label: option[2],
-                        }))}
+                        options={allLocations
+                          ?.filter((el) => el[4] == "Assembly")
+                          .map((option) => ({
+                            value: option[2],
+                            label: option[2],
+                          }))}
                         value={selectedFGItem}
                         onChange={(selectedOption) =>
                           setSelectedFGItem(selectedOption)
@@ -246,7 +298,9 @@ const AddEvent = ({ setOpenAddEvent }) => {
                         name={field.name}
                         className="bg-white ring-[1px] ring-gray-100 w-full rounded-md border border-gray-400 px-4 py-2 outline-none cursor-pointer focus:outline-indigo-600 focus:drop-shadow-2xl sm:h-[60px] lg:h-[40px] date-input"
                       >
-                        <option value="" selected disabled>Select product line</option>
+                        <option value="" selected disabled>
+                          Select product line
+                        </option>
                         <option value="1">P1</option>
                         <option value="2">P2</option>
                         <option value="3">P3</option>
@@ -264,6 +318,8 @@ const AddEvent = ({ setOpenAddEvent }) => {
                         ref={refs[field.name]}
                         name={field.name}
                         type="datetime-local"
+                        value={datetime}
+                        onChange={e => setDatetime(e.target.value)}
                         className="bg-white ring-[1px] ring-gray-100 w-full rounded-md border border-gray-400 px-4 py-2 outline-none cursor-pointer focus:outline-indigo-600 focus:drop-shadow-2xl sm:h-[60px] lg:h-[40px]"
                       />
                     ) : (

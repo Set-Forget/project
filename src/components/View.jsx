@@ -50,6 +50,7 @@ function classNames(...classes) {
 
 function Calendar() {
   const { data } = useSelector((state) => state.reducer);
+
   const dispatch = useDispatch();
 
   const [selectedProductLine, setSelectedProductLine] = useState(["all"]);
@@ -161,7 +162,7 @@ function Calendar() {
       .map((el) => el[26])
       .filter(
         (value, index, array) => array.indexOf(value) === index && index != 0
-      );
+      ).filter(el => el != "");
     if (categories.length >= 0) {
       allCategories.unshift("all");
       setCategories(allCategories);
