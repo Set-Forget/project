@@ -5,13 +5,7 @@ import { useDispatch } from "react-redux";
 import { fetchData } from "../../redux/slice";
 import ConfirmDeleteEvent from "./ConfirmDeleteEvent";
 
-function DetailView({
-  event,
-  setIsModalVisible,
-  onClose,
-  data,
-  setShouldUpdateData,
-}) {
+function DetailView({ event, setIsModalVisible, data, setShouldUpdateData }) {
   let headers = data[0];
   let filteredEventData = data.filter((el) => el[0] == event)[0];
 
@@ -30,7 +24,7 @@ function DetailView({
     date.setUTCHours(date.getUTCHours() - 3);
 
     const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0"); 
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
     const day = String(date.getUTCDate()).padStart(2, "0");
     const hours = String(date.getUTCHours()).padStart(2, "0");
     const minutes = String(date.getUTCMinutes()).padStart(2, "0");
@@ -44,22 +38,29 @@ function DetailView({
   formattedEventData[6] = formatTime(formattedEventData[6]);
 
   const [editPlanStart, setEditPlanStart] = useState(false);
-  const [editedPlanStart, setEditedPlanStart] = useState("");
-  const [eventId, setEventId] = useState("");
+  const [eventId, setEventId] = useState(event);
   const [isLoadingPost, setIsLoadingPost] = useState(false);
-  const [putTime, setPutTime] = useState(false);
+  // const [putTime, setPutTime] = useState(false);
   const [isLoadingDelete, setIsLoadingDelete] = useState(false);
   const [deleteEventId, setDeleteEventId] = useState(false);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [modifiedData, setModifiedData] = useState({});
+
+  const handleInputChange = (header, newValue) => {
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      [header]: newValue,
+    }));
+
+    setModifiedData((prevModifiedData) => ({
+      ...prevModifiedData,
+      [header]: newValue,
+    }));
+  };
 
   const dispatch = useDispatch();
 
   useEffect(() => {
-    setEditedPlanStart(formattedEventData[5]);
-    setEventId(formattedEventData[0]);
-    // if (putTime) {
-    //   dispatch(fetchData());
-    // }
     if (deleteEventId == true) {
       const deletePost = async () => {
         setIsLoadingDelete(true);
@@ -73,19 +74,27 @@ function DetailView({
       };
       deletePost();
     }
-  }, [deleteEventId, isLoadingDelete, dispatch, editPlanStart]);
+  }, [
+    deleteEventId,
+    isLoadingDelete,
+    dispatch,
+    editPlanStart,
+    formattedEventData,
+  ]);
 
   const handleDeleteEvent = () => {
     setConfirmModalVisible(true);
-    // setIsLoadingDelete(true);
-    // setDeleteEventId(true);
   };
 
   const handleSave = () => {
     setIsLoadingPost(true);
-    // setPutTime(true);
-    putPlanTime(eventId, editedPlanStart);
-    setPutTime(false);
+    putPlanTime(eventId, modifiedData);
+    // setPutTime(false);
+  };
+
+  const onClose = () => {
+    setIsModalVisible(false);
+    setEditPlanStart(false);
   };
 
   const deleteEvent = async (eventId) => {
@@ -100,26 +109,121 @@ function DetailView({
     }
   };
 
-  async function putPlanTime(eventId, updatedPlanTime) {
+  async function putPlanTime(eventId, modifiedValues) {
+    let body = JSON.stringify({
+      action: "updatePlanTime",
+      eventId: eventId,
+      modifiedValues: modifiedValues,
+    });
+    console.log("body", body);
     try {
-      let url = `https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec?action=updatePlanTime&eventId=${eventId}&time=${updatedPlanTime}`;
-
-      await fetch(url, {
-        mode: "no-cors",
+      await fetch(
+        `https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec`,
+        {
+          method: "POST",
+          body: body,
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      ).then((resp) => {
+        dispatch(fetchData());
+        // setPutTime(true);
+        setIsLoadingPost(false);
+        setEditPlanStart(false);
+        setIsModalVisible(false);
       });
-
-      // Assuming fetchData() returns a promise (like another fetch call)
-      await dispatch(fetchData());
-
-      setPutTime(true);
-      setIsLoadingPost(false);
-      setEditPlanStart(false);
-      setIsModalVisible(false);
     } catch (error) {
-      console.error("Error updating plan time:", error);
-      // Handle the error appropriately
+      console.error("Error sending data to sheet:", error);
     }
   }
+
+  const headersMap = {
+    Date: 3,
+    "Production Line": 2,
+    Item: 9,
+    Status: 4,
+    "Plan Quantity (cases)": 7,
+    "Plan Start": 5,
+    "Plan End": 6,
+    "Lot Number": 10,
+    "Actual Start": 11,
+    "Actual End": 12,
+    "Actual Quantity (cases)": 13,
+  };
+
+  const displayHeaders = [
+    "Date",
+    "Production Line",
+    "Item",
+    "Status",
+    "Plan Quantity (cases)",
+    "Plan Start",
+    "Plan End",
+    "Lot Number",
+    "Actual Start",
+    "Actual End",
+    "Actual Quantity (cases)",
+  ];
+
+  // const formatDateEdit = (dateString) => {
+  //   // Format the date (assuming dateString is in ISO format YYYY-MM-DD)
+  //   const date = new Date(dateString);
+  //   return date.toLocaleDateString("en-US", {
+  //     timeZone: "UTC",
+  //     year: "numeric",
+  //     month: "2-digit",
+  //     day: "2-digit",
+  //   });
+  // };
+
+  // const formatDateTimeEdit = (dateTimeString) => {
+  //   // Format the datetime (assuming dateTimeString is in ISO format YYYY-MM-DDTHH:mm)
+  //   const dateTime = new Date(dateTimeString);
+  //   return dateTime.toLocaleString("en-US", {
+  //     timeZone: "UTC",
+  //     year: "numeric",
+  //     month: "2-digit",
+  //     day: "2-digit",
+  //     hour: "2-digit",
+  //     minute: "2-digit",
+  //     second: "2-digit",
+  //   });
+  // };
+
+  const formatDateEdit = (dateString) => {
+    // Format the date as YYYY-MM-DD
+    const date = new Date(dateString);
+    return `${date.getUTCFullYear()}-${(date.getUTCMonth() + 1).toString().padStart(2, '0')}-${date.getUTCDate().toString().padStart(2, '0')}`;
+  };
+  
+  const formatDateTimeEdit = (dateTimeString) => {
+    // Format the datetime as YYYY-MM-DDTHH:mm:ss
+    const dateTime = new Date(dateTimeString);
+    return `${dateTime.getUTCFullYear()}-${(dateTime.getUTCMonth() + 1).toString().padStart(2, '0')}-${dateTime.getUTCDate().toString().padStart(2, '0')}T${dateTime.getUTCHours().toString().padStart(2, '0')}:${dateTime.getUTCMinutes().toString().padStart(2, '0')}:${dateTime.getUTCSeconds().toString().padStart(2, '0')}`;
+  };
+  
+  const [formData, setFormData] = useState(() => {
+    const initialFormData = {};
+
+    displayHeaders.forEach((header) => {
+      const index = headersMap[header];
+      let value = formattedEventData[index];
+
+      if (header === "Date" && value) {
+        const date = new Date(value);
+        value = formatDate(date);
+      } else if (header.includes("Start") || header.includes("End") && value) {
+        const dateTime = new Date(value);
+        value = formatTime(dateTime);
+      }
+
+      initialFormData[header] = value;
+    });
+
+    return initialFormData;
+  });
 
   return (
     <div
@@ -204,28 +308,44 @@ function DetailView({
                 </div>
                 <div className="border-t border-gray-100">
                   <dl className="divide-y divide-gray-100">
-                    {headers.map((el, e) => {
+                    {displayHeaders.map((header, index) => {
+                      const inputType =
+                        header === "Date"
+                          ? "date"
+                          : header.includes("Start") || header.includes("End")
+                          ? "datetime-local"
+                          : "text";
+
+                      let value = formData[header] || "";
+
+                      if (header === "Date" && value) {
+                        value = formatDateEdit(value);
+                      } else if (
+                        (header.includes("Start") || header.includes("End")) &&
+                        value
+                      ) {
+                        value = formatDateTimeEdit(value);
+                      }
                       return (
                         <div
-                          key={e}
+                          key={index}
                           className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"
                         >
                           <dt className="text-sm font-medium text-gray-900">
-                            {el}
+                            {header}
                           </dt>
                           <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-                            {e === 5 && editPlanStart ? (
+                            {editPlanStart ? (
                               <input
-                                type="time"
-                                value={editedPlanStart}
+                                type={inputType}
+                                value={value}
                                 onChange={(e) =>
-                                  setEditedPlanStart(e.target.value)
+                                  handleInputChange(header, e.target.value)
                                 }
                                 className="border rounded p-2 w-full"
-                                step="1"
                               />
                             ) : (
-                              formattedEventData[e]
+                              formData[header]
                             )}
                           </dd>
                         </div>

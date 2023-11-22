@@ -216,7 +216,10 @@ const AddEvent = ({ setOpenAddEvent }) => {
         "https://script.google.com/macros/s/AKfycbx-8MsZkrFzfY4KaKj6ImCJKyT-ICRR9JqaWv3wzACv7SNut6jOqGJPVXE-in_-8fkDvQ/exec",
         {
           method: "POST",
-          body: JSON.stringify(data),
+          body: JSON.stringify({
+            data: data,
+            action: "addEvent"
+          }),
           mode: "no-cors",
           headers: {
             "Content-Type": "application/json",
@@ -240,7 +243,19 @@ const AddEvent = ({ setOpenAddEvent }) => {
   const now = new Date();
 
   // const datetime = now.toISOString().slice(0, 16);
-  const [datetime, setDatetime] = useState(now.toISOString().slice(0, 16));
+  const [selectedDate, setSelectedDate] = useState("");
+  const [startDateTime, setStartDateTime] = useState("");
+  const [endDateTime, setEndDateTime] = useState("");
+
+  useEffect(() => {
+    if (selectedDate) {
+      console.log(selectedDate)
+      const formattedStartDateTime = selectedDate + 'T06:30'; // Adds a default time of 00:00
+      const formattedEndDateTime = selectedDate + 'T15:00'; // Adds a default time of 00:00
+    setStartDateTime(formattedStartDateTime);
+    setEndDateTime(formattedEndDateTime);
+    }
+  }, [selectedDate]);
 
   return (
     <div
@@ -310,16 +325,25 @@ const AddEvent = ({ setOpenAddEvent }) => {
                         ref={refs[field.name]}
                         name={field.name}
                         type="date"
+                        onChange={(e) => setSelectedDate(e.target.value)}
                         className="bg-white ring-[1px] ring-gray-100 w-full rounded-md border border-gray-400 px-4 py-2 outline-none cursor-pointer focus:outline-indigo-600 focus:drop-shadow-2xl sm:h-[60px] lg:h-[40px] date-input"
                       />
-                    ) : field.name.includes("Start") ||
-                      field.name.includes("End") ? (
+                    ) : field.name.includes("Start") ? (
                       <input
                         ref={refs[field.name]}
                         name={field.name}
                         type="datetime-local"
-                        value={datetime}
-                        onChange={e => setDatetime(e.target.value)}
+                        value={startDateTime}
+                        onChange={(e) => setStartDateTime(e.target.value)}
+                        className="bg-white ring-[1px] ring-gray-100 w-full rounded-md border border-gray-400 px-4 py-2 outline-none cursor-pointer focus:outline-indigo-600 focus:drop-shadow-2xl sm:h-[60px] lg:h-[40px]"
+                      />
+                    ) : field.name.includes("End") ? (
+                      <input
+                        ref={refs[field.name]}
+                        name={field.name}
+                        type="datetime-local"
+                        value={endDateTime}
+                        onChange={(e) => setEndDateTime(e.target.value)}
                         className="bg-white ring-[1px] ring-gray-100 w-full rounded-md border border-gray-400 px-4 py-2 outline-none cursor-pointer focus:outline-indigo-600 focus:drop-shadow-2xl sm:h-[60px] lg:h-[40px]"
                       />
                     ) : (

@@ -289,15 +289,15 @@ function Calendar() {
           <div className="flex items-center justify-center text-sm font-semibold text-gray-900 =mt-12 space-x-4">
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#93C4D1] rounded-md mr-2"></div>
-              Product Line 1
+              P1
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#D3C7E6] rounded-md mr-2"></div>
-              Product Line 2
+              P2
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-[#FED5CF] rounded-md mr-2"></div>
-              Product Line 3
+              P3
             </div>
           </div>
           <h1 className="text-lg font-semibold leading-6 text-gray-900">
@@ -338,7 +338,7 @@ function Calendar() {
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex md:items-center">
               <MultiSelect
-                label="Product Line"
+                label="Production Line"
                 options={[
                   "all",
                   "Product Line 1",
