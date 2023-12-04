@@ -21,7 +21,7 @@ function DetailView({ event, setIsModalVisible, data, setShouldUpdateData }) {
   function formatTime(inputTime) {
     const date = new Date(inputTime);
 
-    date.setUTCHours(date.getUTCHours() - 3);
+    date.setUTCHours(date.getUTCHours());
 
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, "0");

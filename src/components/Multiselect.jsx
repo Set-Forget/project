@@ -55,7 +55,7 @@ function MultiSelect({ options, selectedValues, onChange, label }) {
                 {options.map((option) => (
                   <Listbox.Option
                     key={option}
-                    value={option}
+                    value={option == 'P1' ? 'Product Line 1' : option == 'P2' ? 'Product Line 2' : option == 'P3' ? 'Product Line 3' : option}
                     className={({ active }) =>
                       classNames(
                         active ? "bg-indigo-600 text-white" : "text-gray-900",

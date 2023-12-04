@@ -341,9 +341,9 @@ function Calendar() {
                 label="Production Line"
                 options={[
                   "all",
-                  "Product Line 1",
-                  "Product Line 2",
-                  "Product Line 3",
+                  "P1",
+                  "P2",
+                  "P3",
                 ]}
                 selectedValues={selectedProductLine}
                 onChange={setSelectedProductLine}
