@@ -260,12 +260,10 @@ function Calendar() {
     eventId +
     "&date=" +
     updatedEventDate;
-    const response = await fetch(url, { mode: "no-cors" });
-    setIsLoadingSpinnerVisible(false);
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    setShouldUpdateData(false);
+    await fetch(url, { mode: "no-cors" }).then(() => {
+      setIsLoadingSpinnerVisible(false);
+      setShouldUpdateData(false);
+    })
   }
 
   function openAddEventModal() {
